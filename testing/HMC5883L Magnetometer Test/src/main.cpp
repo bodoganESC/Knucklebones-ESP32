@@ -5,6 +5,8 @@
 
 Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
 
+#define POWER 23
+
 // This time I'm testing it as a compass because I have never tried it
 // and this is one of the main uses for a magnetometer.
 
@@ -23,8 +25,14 @@ void displaySensorDetails(void) {
 }
 
 void setup() {
+  pinMode(POWER, OUTPUT);
+  digitalWrite(POWER, LOW);
+  delay(100);
+  digitalWrite(POWER, HIGH);
+  delay(500);
   Serial.begin(115200);
   Serial.println("HMC5883L Magnetometer Test"); Serial.println("");
+
 
   if(!mag.begin()) {
     Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
@@ -32,6 +40,8 @@ void setup() {
   }
 
   displaySensorDetails();
+  mag.setMagGain(HMC5883_MAGGAIN_8_1);
+  Serial.println("Gain set to +/- 8.1 Ga");
 }
 
 void loop() {
@@ -41,22 +51,6 @@ void loop() {
   Serial.print("X: "); Serial.print(event.magnetic.x); Serial.print("  ");
   Serial.print("Y: "); Serial.print(event.magnetic.y); Serial.print("  ");
   Serial.print("Z: "); Serial.print(event.magnetic.z); Serial.print("  ");Serial.println("uT");
-  
-  float heading = atan2(event.magnetic.y, event.magnetic.x);
-
-  float declinationAngle = 0.125;
-  heading += declinationAngle;
-
-  if (heading < 0) {
-    heading += 2 * PI;
-  }
-  if (heading > 2 * PI) {
-    heading -= 2 * PI;
-  }
-
-  float headingDegrees = heading * 180/M_PI;
-
-  Serial.print("Heading (degrees): "); Serial.println(headingDegrees);
 
   delay(500);
 }
