@@ -16,8 +16,9 @@ class DiceReader {
     public:
         DiceReader(Adafruit_HMC5883_Unified& magnetometer, float tolerance);
 
-        // Starts the preferences manager and loads saved data.
-        void begin();
+        // Starts the preferences manager and loads saved data. 
+        // Returns true if data was successfully loaded, false otherwise.
+        bool begin();
 
         // Compares live XYZ to memory. Returns index 1-6, or 0 if no match is found.
         int read(float currentX, float currentY, float currentZ);
@@ -29,7 +30,7 @@ class DiceReader {
         void recordFace(int faceIndex, float x, float y, float z);
 
         void eraseMemory();
-        
+
     private:
         Adafruit_HMC5883_Unified& mag;
         Preferences prefs;
