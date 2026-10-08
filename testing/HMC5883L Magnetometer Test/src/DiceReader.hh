@@ -27,7 +27,10 @@ class DiceReader {
         bool load();
 
         // Saves the current XYZ values for the specified face.
-        void recordFace(int faceIndex, float x, float y, float z);
+        bool recordFace(int faceIndex, float x, float y, float z);
+
+        // Saves all six face signatures at once. Returns false if any of the face signatures are invalid.
+        bool recordAllFaces(const FaceSignature newFaces[6]);
 
         void eraseMemory();
 

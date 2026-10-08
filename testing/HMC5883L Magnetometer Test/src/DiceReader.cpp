@@ -20,3 +20,27 @@ bool DiceReader::load() {
     prefs.end();
     return false;
 }
+
+bool DiceReader::recordFace(int faceIndex, float x, float y, float z) {
+    if (faceIndex < 1 || faceIndex > 6) {
+        return false; // Invalid face index
+    }
+    faces[faceIndex - 1] = {x, y, z};
+    prefs.begin("dice_reader", false);
+    prefs.putBytes("calibdata", faces, sizeof(faces));
+    prefs.end();
+    return true;
+}
+
+bool DiceReader::recordAllFaces(const FaceSignature newFaces[6]) {
+    memcpy(faces, newFaces, sizeof(faces));
+
+    if (!prefs.begin("dice_reader", false)) {
+        return false; // Failed to start preferences
+    }
+
+    size_t written = prefs.putBytes("calibdata", faces, sizeof(faces));
+    prefs.end();
+
+    return (written == sizeof(faces));
+}
