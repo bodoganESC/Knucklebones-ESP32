@@ -46,5 +46,6 @@ By putting neodymium magnets inside the dice and placing a GY-271 (QMC5883L) 3-a
 - [x] Draft project rules, hardware stack, and README
 - [ ] Build single-sensor breadboard prototype
 - [ ] Map the X, Y, Z magnetic values to the 6 dice faces
-- [ ] Program a single-slot LED visual reaction
+- [x] Program a single-slot LED visual reaction
 - [ ] Expand the I2C bus to handle multiple sensors
+- [ ] Build a tri-sensor breadboard prototype
