@@ -34,6 +34,27 @@ This could be done with a camera that tracks dice faces, sure. However, an overh
 
 By putting neodymium magnets inside the dice and placing a GY-271 (QMC5883L) 3-axis magnetometer under each board slot, I can track the die face purely by reading the X, Y, and Z values of the magnetic fields. That data is relayed via I2C to an ESP32 microcontroller, which handles the game logic, does the math, and drives the LCD displays and LEDs.
 
+## Magnetic face detection and physics
+
+Standard cubic dice placed in square pockets allow four ambiguous horizontal rotations ($0^\circ, 90^\circ, 180^\circ, 270^\circ$) per face. One solution was offsetting the dice from the center, however that makes a center of mass imbalance making the dice rolling bias towards certain faces.
+
+### Solution: Asymmetric 3-Axis Dipole Rotation
+To ensure the die rolls fairly, a single 3 mm N45 neodymium cube magnet is embedded at the **exact center of mass**, but tilted along an asymmetric vector across all three principal axes:
+
+$$\vec{m} = (0.17,\; 0.51,\; 0.84)$$
+
+Because $|m_x| \ne |m_y| \ne |m_z|$, each of the 6 faces presents a unique vertical projection ($m_z$) to the magnetometer floor.
+
+### Yaw Invariance
+Rotating the die flat in its pocket (yaw around the Z-axis) changes raw $B_x$ and $B_y$, but leaves the following metrics constant:
+- **Vertical field:** $B_z$
+- **Horizontal magnitude:** $B_h = \sqrt{B_x^2 + B_y^2}$
+- **Total field magnitude:** $|B| = \sqrt{B_x^2 + B_y^2 + B_z^2}$
+
+Comparing $(B_z, B_h)$ against calibrated slot thresholds enables 100% deterministic face detection regardless of player placement angle.
+
+**[Link to a 3D magnet visualizer for how it looks inside the die](https://<your-username>.github.io/<repo-name>/tools/magnet_visualizer/)**
+
 ---
 
 ## Technical Stack & Hardware
@@ -44,8 +65,12 @@ By putting neodymium magnets inside the dice and placing a GY-271 (QMC5883L) 3-a
 
 ## Project Roadmap
 - [x] Draft project rules, hardware stack, and README
+- [x] Program a single-slot LED visual reaction
+- [ ] Make physical 3D printed die with magnet inside
+- [ ] Redo code to function with new logic and features
 - [ ] Build single-sensor breadboard prototype
 - [ ] Map the X, Y, Z magnetic values to the 6 dice faces
-- [x] Program a single-slot LED visual reaction
 - [ ] Expand the I2C bus to handle multiple sensors
 - [ ] Build a tri-sensor breadboard prototype
+- [ ] Try the single breadboard prototype with wider range TLV493D magnetometer breakout
+- [ ] Design PCB-v1
