@@ -53,7 +53,7 @@ Rotating the die flat in its pocket (yaw around the Z-axis) changes raw $B_x$ an
 
 Comparing $(B_z, B_h)$ against calibrated slot thresholds enables 100% deterministic face detection regardless of player placement angle.
 
-**[Link to a 3D magnet visualizer for how it looks inside the die](https://<your-username>.github.io/<repo-name>/tools/magnet_visualizer/)**
+**[Link to a 3D magnet visualizer for how it looks inside the die](https://bodogan.github.io/Knucklebones-ESP32/tools/magnet_visualizer/)**
 
 ---
 
