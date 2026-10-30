@@ -2,8 +2,6 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_HMC5883_U.h>
 #include <Preferences.h>
 #include <stdint.h>
 
@@ -17,7 +15,7 @@ class DiceReader {
 public:
     static constexpr uint8_t NUM_FACES = 6;
     static constexpr uint8_t MAX_SLOTS = 18;
-    DiceReader(Adafruit_HMC5883_Unified& magnetometer, uint8_t slotId, float m_tolerance);
+    DiceReader(uint8_t slotId, float m_tolerance);
 
     // Starts the preferences manager and loads saved data. 
     // Returns true if data was successfully loaded, false otherwise.
@@ -43,15 +41,13 @@ public:
 private:
     static constexpr const char* NVS_NAMESPACE = "dice_reader";
 
-    Adafruit_HMC5883_Unified& mag;
     Preferences prefs;
     uint8_t id;
     float tolerance;
-    FaceSignature faces[6];
+    FaceSignature faces[NUM_FACES];
     char nvsKey[12];
 
     // Private helpers for validation and DRY NVS operations
     bool isValidId() const;
-    bool isMatch(const FaceSignature& face, float currentX, float currentY, float currentZ) const;
     bool saveToNVS();
 };
