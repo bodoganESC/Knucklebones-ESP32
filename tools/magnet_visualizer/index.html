@@ -1,720 +1,524 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Magnetic Die & Dipole Sensor Simulator</title>
-    <!-- Tailwind CSS for clean, responsive UI styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js UMD build from cdnjs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            overflow-x: hidden;
-        }
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-            min-height: 460px;
-            position: relative;
-            cursor: grab;
-        }
-        #canvas-container:active {
-            cursor: grabbing;
-        }
-        /* Custom styling for range sliders */
-        input[type="range"] {
-            accent-color: #38bdf8;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Knucklebones Dipole & Magnet Orientation Visualizer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111418;
+      color: #e0e0e0;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .panel {
+      position: absolute;
+      background: rgba(22, 27, 34, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    #controls {
+      top: 16px;
+      left: 16px;
+      width: 320px;
+    }
+    #readouts {
+      top: 16px;
+      right: 16px;
+      width: 340px;
+    }
+    #table-panel {
+      bottom: 16px;
+      right: 16px;
+      width: 440px;
+    }
+    h2, h3 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #58a6ff;
+    }
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    button {
+      background: #21262d;
+      border: 1px solid #363b42;
+      color: #c9d1d9;
+      padding: 8px 0;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    button:hover {
+      background: #30363d;
+      border-color: #8b949e;
+      color: #ffffff;
+    }
+    button.active {
+      background: #1f6feb;
+      border-color: #58a6ff;
+      color: #ffffff;
+    }
+    .control-row {
+      margin-bottom: 12px;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 4px;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: #58a6ff;
+    }
+    .vector-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .vector-inputs input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      padding: 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      text-align: center;
+      width: 80%;
+    }
+    .readout-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #21262d;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .readout-val {
+      font-weight: bold;
+      color: #79c0ff;
+    }
+    .highlight {
+      color: #7ee787;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: monospace;
+      font-size: 11px;
+      text-align: right;
+    }
+    th, td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #21262d;
+    }
+    th {
+      color: #8b949e;
+      font-weight: 600;
+    }
+    tr.active-row {
+      background: rgba(31, 111, 235, 0.25);
+    }
+  </style>
+  <!-- Three.js UMD from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body class="min-h-screen flex flex-col lg:flex-row">
+<body>
 
-    <!-- LEFT / TOP: 3D Three.js Viewport -->
-    <div class="w-full lg:w-7/12 xl:w-2/3 flex flex-col bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 relative">
-        <!-- Top Overlay Header -->
-        <div class="p-4 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 flex flex-wrap justify-between items-center gap-2 z-10">
-            <div>
-                <h1 class="text-lg font-bold text-white flex items-center gap-2">
-                    <span class="inline-block w-3 h-3 rounded-full bg-sky-400"></span>
-                    16 mm Magnetic Die Visualizer (World +Z Up)
-                </h1>
-                <p class="text-xs text-slate-400">
-                    Drag on the 3D view to orbit camera • Scroll to zoom • 1 unit = 1 mm
-                </p>
-            </div>
-            <div class="flex items-center gap-3 text-xs">
-                <span class="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-medium">
-                    Yellow Arrow = Magnet North (m)
-                </span>
-                <span class="px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-medium">
-                    Green Square = Sensor (-2.5 mm)
-                </span>
-            </div>
-        </div>
+  <div id="canvas-container"></div>
 
-        <!-- 3D Canvas Container -->
-        <div id="canvas-container" class="flex-1"></div>
-
-        <!-- Bottom Legend Overlay -->
-        <div class="p-3 bg-slate-950/80 border-t border-slate-800 text-xs text-slate-400 flex flex-wrap gap-4 justify-between items-center">
-            <div class="flex items-center gap-4">
-                <span><strong class="text-rose-400">Red Axis:</strong> +X</span>
-                <span><strong class="text-emerald-400">Green Axis:</strong> +Y</span>
-                <span><strong class="text-sky-400">Blue Axis:</strong> +Z (Vertical Up)</span>
-            </div>
-            <div>
-                Die: <strong>16×16×16 mm</strong> (Center at z = 0) | Sensor at <strong>z = -10.5 mm</strong> (2.5 mm below bottom face)
-            </div>
-        </div>
+  <!-- Left: Controls -->
+  <div class="panel" id="controls">
+    <h2>Face Up Orientation</h2>
+    <div class="btn-group">
+      <button onclick="setFace('+Z')" id="btn-+Z" class="active">+Z (Top)</button>
+      <button onclick="setFace('-Z')" id="btn--Z">-Z (Bottom)</button>
+      <button onclick="setFace('+Y')" id="btn-+Y">+Y</button>
+      <button onclick="setFace('-Y')" id="btn--Y">-Y</button>
+      <button onclick="setFace('+X')" id="btn-+X">+X</button>
+      <button onclick="setFace('-X')" id="btn--X">-X</button>
     </div>
 
-    <!-- RIGHT / BOTTOM: Controls & Live Math Telemetry -->
-    <div class="w-full lg:w-5/12 xl:w-1/3 bg-slate-950 p-5 overflow-y-auto space-y-5 max-h-screen">
-
-        <!-- CONTROL SECTION 1: Select Which Face is Up (+Z) -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-sm font-semibold uppercase tracking-wider text-sky-400">
-                    1. Select Face Pointing Up (World +Z)
-                </h2>
-                <span id="active-face-badge" class="text-xs font-mono bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
-                    +Z UP
-                </span>
-            </div>
-            <div class="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-3 gap-2">
-                <button onclick="setFaceUp('+Z')" id="btn-+Z" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-sky-600 text-white shadow transition">
-                    +Z (Face 1)
-                </button>
-                <button onclick="setFaceUp('-Z')" id="btn--Z" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                    -Z (Face 6)
-                </button>
-                <button onclick="setFaceUp('+Y')" id="btn-+Y" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                    +Y (Face 2)
-                </button>
-                <button onclick="setFaceUp('-Y')" id="btn--Y" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                    -Y (Face 5)
-                </button>
-                <button onclick="setFaceUp('+X')" id="btn-+X" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                    +X (Face 3)
-                </button>
-                <button onclick="setFaceUp('-X')" id="btn--X" class="face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                    -X (Face 4)
-                </button>
-            </div>
-        </div>
-
-        <!-- CONTROL SECTION 2: Yaw Slider (Rotation around World +Z) -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <div class="flex justify-between items-center mb-1">
-                <label for="yaw-slider" class="text-sm font-semibold uppercase tracking-wider text-sky-400">
-                    2. Yaw Rotation (Spin in Slot about World +Z)
-                </label>
-                <span id="yaw-value-label" class="font-mono text-sm font-bold text-white bg-slate-800 px-2.5 py-0.5 rounded">
-                    0°
-                </span>
-            </div>
-            <p class="text-xs text-slate-400 mb-3">
-                Simulates placing the die rotated horizontally inside the square pocket.
-            </p>
-            <input id="yaw-slider" type="range" min="0" max="360" step="1" value="0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer" oninput="onYawChange(this.value)">
-            <div class="flex justify-between text-[11px] font-mono text-slate-500 mt-1">
-                <button onclick="setYaw(0)" class="hover:text-sky-400">0°</button>
-                <button onclick="setYaw(90)" class="hover:text-sky-400">90°</button>
-                <button onclick="setYaw(180)" class="hover:text-sky-400">180°</button>
-                <button onclick="setYaw(270)" class="hover:text-sky-400">270°</button>
-                <button onclick="setYaw(360)" class="hover:text-sky-400">360°</button>
-            </div>
-        </div>
-
-        <!-- CONTROL SECTION 3: Magnet Vector m in Die Frame -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <div class="flex justify-between items-center mb-1">
-                <h2 class="text-sm font-semibold uppercase tracking-wider text-amber-400">
-                    3. Magnet Vector m (In Die Frame)
-                </h2>
-                <button onclick="resetMagnetVector()" class="text-xs text-slate-400 hover:text-white underline">
-                    Reset (0.17, 0.51, 0.84)
-                </button>
-            </div>
-            <p class="text-xs text-slate-400 mb-3">
-                Enter any numbers; they are auto-normalized so <code class="text-amber-300">|m| = 1</code>.
-            </p>
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-xs font-mono text-rose-400 mb-1">m_x (Die X)</label>
-                    <input id="input-mx" type="number" step="0.05" value="0.17" onchange="onMagnetInputChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-sm text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-mono text-emerald-400 mb-1">m_y (Die Y)</label>
-                    <input id="input-my" type="number" step="0.05" value="0.51" onchange="onMagnetInputChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-sm text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-mono text-sky-400 mb-1">m_z (Die Z)</label>
-                    <input id="input-mz" type="number" step="0.05" value="0.84" onchange="onMagnetInputChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-sm text-white focus:outline-none focus:border-sky-500">
-                </div>
-            </div>
-            <div class="mt-2.5 text-xs font-mono text-slate-400 bg-slate-950/70 px-3 py-1.5 rounded border border-slate-800/80 flex justify-between">
-                <span>Normalized m̂:</span>
-                <span id="norm-m-display" class="text-amber-300 font-semibold">(0.170, 0.510, 0.843)</span>
-            </div>
-        </div>
-
-        <!-- LIVE TELEMETRY: World m_z and Normalized Dipole Readings -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
-            <h2 class="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-                4. Live Sensor Readings (Yaw-Invariant Proof)
-            </h2>
-
-            <!-- Key invariant metrics -->
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-slate-950 border border-slate-800 p-2.5 rounded-lg">
-                    <div class="text-[11px] text-slate-400 font-mono">World m_z</div>
-                    <div id="readout-mz" class="text-lg font-bold font-mono text-white mt-0.5">+0.843</div>
-                    <div class="text-[10px] text-emerald-400">Yaw-Invariant</div>
-                </div>
-                <div class="bg-slate-950 border border-emerald-500/40 p-2.5 rounded-lg">
-                    <div class="text-[11px] text-slate-300 font-mono">B_z / |B|</div>
-                    <div id="readout-bz" class="text-lg font-bold font-mono text-emerald-400 mt-0.5">+0.952</div>
-                    <div class="text-[10px] text-emerald-400">2·m_z / √(3m_z²+1)</div>
-                </div>
-                <div class="bg-slate-950 border border-emerald-500/40 p-2.5 rounded-lg">
-                    <div class="text-[11px] text-slate-300 font-mono">B_h / |B|</div>
-                    <div id="readout-bh" class="text-lg font-bold font-mono text-emerald-400 mt-0.5">0.305</div>
-                    <div class="text-[10px] text-emerald-400">√(1-m_z²) / √(3m_z²+1)</div>
-                </div>
-            </div>
-
-            <!-- Comparison with X/Y components that DO change with Yaw -->
-            <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-3 text-xs space-y-1.5">
-                <div class="flex justify-between items-center text-slate-400">
-                    <span>Horizontal X/Y (Changes with Yaw!):</span>
-                    <span class="font-mono text-rose-300">
-                        B_x/|B| = <span id="readout-bx">0.096</span>,
-                        B_y/|B| = <span id="readout-by">0.289</span>
-                    </span>
-                </div>
-                <div class="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800/80">
-                    Move the <strong>Yaw slider</strong> above: notice how <code class="text-rose-300">B_x</code> and <code class="text-rose-300">B_y</code> change as the die spins, but <code class="text-emerald-400">B_z</code> and <code class="text-emerald-400">B_h = √(B_x² + B_y²)</code> stay <strong>100% locked</strong>!
-                </div>
-            </div>
-
-            <!-- All 6 Faces Signature Table -->
-            <div class="pt-1">
-                <div class="text-xs font-semibold text-slate-300 mb-2">
-                    All 6 Faces Signature Table (Distinct for every face):
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-xs font-mono text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-800 text-slate-400">
-                                <th class="py-1.5 px-2">Face Up</th>
-                                <th class="py-1.5 px-2">World m_z</th>
-                                <th class="py-1.5 px-2 text-emerald-400">Norm B_z</th>
-                                <th class="py-1.5 px-2 text-emerald-400">Norm B_h</th>
-                            </tr>
-                        </thead>
-                        <tbody id="signature-table-body" class="divide-y divide-slate-800/60">
-                            <!-- Populated dynamically by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
+    <div class="control-row">
+      <label>Yaw Rotation (Die spinning in pocket): <span id="yaw-val">0°</span></label>
+      <input type="range" id="yaw-slider" min="0" max="360" value="0" step="1">
     </div>
 
-    <script>
-        // ============================================================================
-        // 1. STATE & GEOMETRY CONSTANTS (All dimensions in millimeters)
-        // ============================================================================
-        const DIE_SIZE = 16.0;          // 16 mm cube
-        const HALF_DIE = DIE_SIZE / 2;  // 8 mm from center to any face
-        const SENSOR_GAP = 2.5;         // 2.5 mm below bottom of die
-        const SENSOR_Z = -(HALF_DIE + SENSOR_GAP); // -10.5 mm in world Z
-
-        // Normalized magnet direction vector in the Die's local coordinate frame
-        let magnetDieVec = new THREE.Vector3(0.17, 0.51, 0.84).normalize();
-
-        // Current orientation state
-        let currentFaceUp = '+Z';
-        let currentYawDeg = 0;
-
-        // ============================================================================
-        // 2. THREE.JS SCENE SETUP (World +Z is Vertical "Up")
-        // ============================================================================
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0f172a);
-
-        // Configure world so +Z is UP
-        THREE.Object3D.DefaultUp.set(0, 0, 1);
-
-        const camera = new THREE.PerspectiveCamera(
-            42,
-            container.clientWidth / container.clientHeight,
-            0.1,
-            500
-        );
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-        dirLight.position.set(30, -40, 50);
-        scene.add(dirLight);
-
-        // Subtle reference grid at the bottom face level (z = -8 mm)
-        const gridHelper = new THREE.GridHelper(48, 12, 0x334155, 0x1e293b);
-        gridHelper.rotation.x = Math.PI / 2; // Rotate grid to lie in the X-Y plane (since +Z is up)
-        gridHelper.position.z = -HALF_DIE;
-        scene.add(gridHelper);
-
-        // World +Z vertical reference line passing through center
-        const worldZLineGeo = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, -14),
-            new THREE.Vector3(0, 0, 15)
-        ]);
-        const worldZLineMat = new THREE.LineDashedMaterial({
-            color: 0x38bdf8,
-            dashSize: 1,
-            gapSize: 0.8,
-            transparent: true,
-            opacity: 0.45
-        });
-        const worldZLine = new THREE.Line(worldZLineGeo, worldZLineMat);
-        worldZLine.computeLineDistances();
-        scene.add(worldZLine);
-
-        // ============================================================================
-        // 3. SENSOR GRAPHIC (2.5 mm below the bottom of the 16 mm die -> z = -10.5 mm)
-        // ============================================================================
-        const sensorGroup = new THREE.Group();
-        sensorGroup.position.set(0, 0, SENSOR_Z);
-        scene.add(sensorGroup);
-
-        // Small 4x4 mm green PCB/IC square representing the magnetometer sensor
-        const sensorGeo = new THREE.BoxGeometry(4.5, 4.5, 0.8);
-        const sensorMat = new THREE.MeshStandardMaterial({
-            color: 0x10b981,
-            roughness: 0.3,
-            metalness: 0.2
-        });
-        const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
-        sensorGroup.add(sensorMesh);
-
-        // Outline for sensor
-        const sensorEdges = new THREE.LineSegments(
-            new THREE.EdgesGeometry(sensorGeo),
-            new THREE.LineBasicMaterial({ color: 0x6ee7b7 })
-        );
-        sensorGroup.add(sensorEdges);
-
-        // Label sprite for Sensor
-        function createTextSprite(text, textColor = '#ffffff', bgColor = 'rgba(15, 23, 42, 0.75)', scale = 4.2) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-
-            // Rounded pill background
-            ctx.fillStyle = bgColor;
-            ctx.beginPath();
-            ctx.roundRect(16, 24, 224, 80, 20);
-            ctx.fill();
-
-            ctx.font = 'bold 48px Inter, monospace, sans-serif';
-            ctx.fillStyle = textColor;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, 128, 64);
-
-            const texture = new THREE.CanvasTexture(canvas);
-            const spriteMat = new THREE.SpriteMaterial({
-                map: texture,
-                transparent: true,
-                depthTest: false
-            });
-            const sprite = new THREE.Sprite(spriteMat);
-            sprite.scale.set(scale, scale * 0.5, 1);
-            return sprite;
-        }
-
-        const sensorLabel = createTextSprite('SENSOR (-2.5mm)', '#6ee7b7', 'rgba(6, 78, 59, 0.85)', 6.5);
-        sensorLabel.position.set(0, 0, -2.2);
-        sensorGroup.add(sensorLabel);
-
-        // ============================================================================
-        // 4. THE 16 MM DIE GROUP (Cube, Face Labels, Local Axes, and Magnet Arrow)
-        // ============================================================================
-        // Everything attached to `dieGroup` rotates together when the die turns!
-        const dieGroup = new THREE.Group();
-        scene.add(dieGroup);
-
-        // 4A. Semi-transparent 16 mm cube so we can see the magnet arrow inside
-        const dieGeo = new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE);
-        const dieMat = new THREE.MeshPhysicalMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.18,
-            roughness: 0.15,
-            transmission: 0.2,
-            depthWrite: false
-        });
-        const dieMesh = new THREE.Mesh(dieGeo, dieMat);
-        dieGroup.add(dieMesh);
-
-        // Crisp edges on the 16 mm cube
-        const dieEdgeGeo = new THREE.EdgesGeometry(dieGeo);
-        const dieEdgeMat = new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.75 });
-        const dieWireframe = new THREE.LineSegments(dieEdgeGeo, dieEdgeMat);
-        dieGroup.add(dieWireframe);
-
-        // 4B. Die Frame Local Axes (+X, -X, +Y, -Y, +Z, -Z) inside the cube
-        function createLocalAxisLine(start, end, colorHex) {
-            const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
-            const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.65 });
-            return new THREE.Line(geo, mat);
-        }
-
-        // X axis (Red), Y axis (Green), Z axis (Blue) spanning from -8 to +8 mm
-        dieGroup.add(createLocalAxisLine(new THREE.Vector3(-HALF_DIE, 0, 0), new THREE.Vector3(HALF_DIE, 0, 0), 0xf87171));
-        dieGroup.add(createLocalAxisLine(new THREE.Vector3(0, -HALF_DIE, 0), new THREE.Vector3(0, HALF_DIE, 0), 0x4ade80));
-        dieGroup.add(createLocalAxisLine(new THREE.Vector3(0, 0, -HALF_DIE), new THREE.Vector3(0, 0, HALF_DIE), 0x38bdf8));
-
-        // 4C. Six Face Labels (+X, -X, +Y, -Y, +Z, -Z) positioned right at the center of each face
-        const faceLabelsData = [
-            { label: '+X', pos: [ HALF_DIE + 1.1, 0, 0], color: '#fca5a5' },
-            { label: '-X', pos: [-HALF_DIE - 1.1, 0, 0], color: '#fca5a5' },
-            { label: '+Y', pos: [0,  HALF_DIE + 1.1, 0], color: '#86efac' },
-            { label: '-Y', pos: [0, -HALF_DIE - 1.1, 0], color: '#86efac' },
-            { label: '+Z', pos: [0, 0,  HALF_DIE + 1.1], color: '#7dd3fc' },
-            { label: '-Z', pos: [0, 0, -HALF_DIE - 1.1], color: '#7dd3fc' }
-        ];
-
-        faceLabelsData.forEach(item => {
-            const sprite = createTextSprite(item.label, item.color, 'rgba(15, 23, 42, 0.85)', 3.6);
-            sprite.position.set(...item.pos);
-            dieGroup.add(sprite);
-        });
-
-        // 4D. Small 3 mm N45 Magnet Cube at the center + Prominent North Arrow
-        const magnetCubeGeo = new THREE.BoxGeometry(3.0, 3.0, 3.0);
-        const magnetCubeMat = new THREE.MeshStandardMaterial({
-            color: 0xf59e0b,
-            metalness: 0.6,
-            roughness: 0.3
-        });
-        const magnetCubeMesh = new THREE.Mesh(magnetCubeGeo, magnetCubeMat);
-        dieGroup.add(magnetCubeMesh);
-
-        // Arrow showing Magnet North direction `m` starting from center (0,0,0)
-        const arrowLength = 7.2; // Reaches nearly to the 8 mm wall
-        const magnetArrow = new THREE.ArrowHelper(
-            magnetDieVec,
-            new THREE.Vector3(0, 0, 0),
-            arrowLength,
-            0xfbbf24, // Bright amber/yellow
-            2.4,      // Head length
-            1.4       // Head width
-        );
-        dieGroup.add(magnetArrow);
-
-        // ============================================================================
-        // 5. ROTATION & DIPOLE PHYSICS MATH
-        // ============================================================================
-        /**
-         * Returns the base quaternion that rotates the die so that `faceName`
-         * points along the World +Z (vertical up) axis.
-         */
-        function getBaseFaceUpQuaternion(faceName) {
-            const q = new THREE.Quaternion();
-            switch (faceName) {
-                case '+Z':
-                    // +Z is already pointing to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0);
-                    break;
-                case '-Z':
-                    // Rotate 180 deg around X so -Z points to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
-                    break;
-                case '+Y':
-                    // Rotate -90 deg around X so +Y points to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-                    break;
-                case '-Y':
-                    // Rotate +90 deg around X so -Y points to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-                    break;
-                case '+X':
-                    // Rotate -90 deg around Y so +X points to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
-                    break;
-                case '-X':
-                    // Rotate +90 deg around Y so -X points to World +Z
-                    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-                    break;
-            }
-            return q;
-        }
-
-        /**
-         * Computes dipole field values at the sensor directly underneath the die.
-         * Since the sensor lies on the world Z axis (x=0, y=0, z=-d),
-         * the unit position vector r_hat is (0, 0, -1).
-         *
-         * For a magnetic dipole:
-         *   B_x = -k * m_world.x
-         *   B_y = -k * m_world.y
-         *   B_z =  2 * k * m_world.z
-         *
-         * Therefore:
-         *   |B| = k * sqrt(m_x^2 + m_y^2 + 4*m_z^2) = k * sqrt(1 + 3*m_z^2)
-         *   Normalized Bz = 2 * m_z / sqrt(1 + 3*m_z^2)
-         *   Normalized Bh = sqrt(1 - m_z^2) / sqrt(1 + 3*m_z^2)
-         */
-        function computeDipoleMetrics(worldM) {
-            // Clamp mz to [-1, 1] to avoid floating-point sqrt(-0.000001)
-            const mz = Math.max(-1, Math.min(1, worldM.z));
-            const normFactor = Math.sqrt(1 + 3 * mz * mz);
-
-            const normBx = -worldM.x / normFactor;
-            const normBy = -worldM.y / normFactor;
-            const normBz = (2 * mz) / normFactor;
-            const normBh = Math.sqrt(Math.max(0, 1 - mz * mz)) / normFactor;
-
-            return { mz, normBx, normBy, normBz, normBh };
-        }
-
-        /**
-         * Updates the 3D die orientation and refreshes all live telemetry displays.
-         */
-        function updateSimulation() {
-            // 1. Update internal arrow direction in case user edited (mx, my, mz)
-            magnetArrow.setDirection(magnetDieVec);
-
-            // 2. Build the total rotation quaternion:
-            //    First rotate the chosen face to World +Z, then apply Yaw around World +Z.
-            const qBase = getBaseFaceUpQuaternion(currentFaceUp);
-            const yawRad = THREE.MathUtils.degToRad(currentYawDeg);
-            const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), yawRad);
-
-            // Pre-multiply by qYaw so yaw rotates around the GLOBAL vertical +Z axis
-            const qTotal = new THREE.Quaternion().multiplyQuaternions(qYaw, qBase);
-            dieGroup.quaternion.copy(qTotal);
-
-            // 3. Transform the die-frame magnet vector into the World Frame
-            const worldM = magnetDieVec.clone().applyQuaternion(qTotal).normalize();
-
-            // 4. Compute dipole readings for current orientation
-            const metrics = computeDipoleMetrics(worldM);
-
-            // 5. Update UI readouts
-            const formatSigned = (num) => (num >= 0 ? '+' : '') + num.toFixed(3);
-            document.getElementById('readout-mz').textContent = formatSigned(metrics.mz);
-            document.getElementById('readout-bz').textContent = formatSigned(metrics.normBz);
-            document.getElementById('readout-bh').textContent = metrics.normBh.toFixed(3);
-            document.getElementById('readout-bx').textContent = formatSigned(metrics.normBx);
-            document.getElementById('readout-by').textContent = formatSigned(metrics.normBy);
-
-            // 6. Populate the 6-face comparison table
-            updateAllFacesTable();
-        }
-
-        function updateAllFacesTable() {
-            const faces = ['+Z', '-Z', '+Y', '-Y', '+X', '-X'];
-            const tbody = document.getElementById('signature-table-body');
-            tbody.innerHTML = '';
-
-            faces.forEach(face => {
-                const qFace = getBaseFaceUpQuaternion(face);
-                const worldM = magnetDieVec.clone().applyQuaternion(qFace).normalize();
-                const m = computeDipoleMetrics(worldM);
-
-                const isSelected = (face === currentFaceUp);
-                const rowClass = isSelected
-                    ? 'bg-sky-500/20 text-white font-bold'
-                    : 'text-slate-300 hover:bg-slate-800/40';
-
-                const formatSigned = (num) => (num >= 0 ? '+' : '') + num.toFixed(3);
-
-                const tr = document.createElement('tr');
-                tr.className = `${rowClass} cursor-pointer transition`;
-                tr.onclick = () => setFaceUp(face);
-                tr.innerHTML = `
-                    <td class="py-1.5 px-2">${face} ${isSelected ? '◀' : ''}</td>
-                    <td class="py-1.5 px-2">${formatSigned(m.mz)}</td>
-                    <td class="py-1.5 px-2 text-emerald-400">${formatSigned(m.normBz)}</td>
-                    <td class="py-1.5 px-2 text-emerald-400">${m.normBh.toFixed(3)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // ============================================================================
-        // 6. UI CONTROL HANDLERS
-        // ============================================================================
-        function setFaceUp(faceName) {
-            currentFaceUp = faceName;
-            document.getElementById('active-face-badge').textContent = `${faceName} UP`;
-
-            // Update button active styles
-            const allFaces = ['+Z', '-Z', '+Y', '-Y', '+X', '-X'];
-            allFaces.forEach(f => {
-                const btn = document.getElementById(`btn-${f}`);
-                if (f === faceName) {
-                    btn.className = 'face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-sky-600 text-white shadow transition';
-                } else {
-                    btn.className = 'face-btn py-2 px-3 rounded-lg font-mono text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
-                }
-            });
-
-            updateSimulation();
-        }
-
-        function onYawChange(val) {
-            currentYawDeg = parseFloat(val) || 0;
-            document.getElementById('yaw-value-label').textContent = `${Math.round(currentYawDeg)}°`;
-            updateSimulation();
-        }
-
-        function setYaw(deg) {
-            const slider = document.getElementById('yaw-slider');
-            slider.value = deg;
-            onYawChange(deg);
-        }
-
-        function onMagnetInputChange() {
-            let mx = parseFloat(document.getElementById('input-mx').value) || 0;
-            let my = parseFloat(document.getElementById('input-my').value) || 0;
-            let mz = parseFloat(document.getElementById('input-mz').value) || 0;
-
-            // Prevent zero vector
-            if (mx === 0 && my === 0 && mz === 0) {
-                mz = 1;
-            }
-
-            magnetDieVec.set(mx, my, mz).normalize();
-            document.getElementById('norm-m-display').textContent =
-                `(${magnetDieVec.x.toFixed(3)}, ${magnetDieVec.y.toFixed(3)}, ${magnetDieVec.z.toFixed(3)})`;
-
-            updateSimulation();
-        }
-
-        function resetMagnetVector() {
-            document.getElementById('input-mx').value = '0.17';
-            document.getElementById('input-my').value = '0.51';
-            document.getElementById('input-mz').value = '0.84';
-            onMagnetInputChange();
-        }
-
-        // ============================================================================
-        // 7. SIMPLE CAMERA ORBIT CONTROLS (Mouse & Touch)
-        // ============================================================================
-        let isDragging = false;
-        let prevX = 0;
-        let prevY = 0;
-        let camAzimuth = -Math.PI / 3;   // Horizontal angle around Z
-        let camElevation = Math.PI / 6;  // Vertical angle above X-Y plane
-        let camRadius = 46;              // Distance from origin
-
-        function updateCameraPosition() {
-            // Clamp elevation so camera doesn't flip over the poles
-            const maxElev = Math.PI / 2 - 0.08;
-            camElevation = Math.max(-maxElev, Math.min(maxElev, camElevation));
-            camRadius = Math.max(22, Math.min(95, camRadius));
-
-            camera.position.x = camRadius * Math.cos(camElevation) * Math.cos(camAzimuth);
-            camera.position.y = camRadius * Math.cos(camElevation) * Math.sin(camAzimuth);
-            camera.position.z = camRadius * Math.sin(camElevation);
-            camera.lookAt(0, 0, -1.5);
-        }
-
-        updateCameraPosition();
-
-        // Mouse Orbit
-        container.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            prevX = e.clientX;
-            prevY = e.clientY;
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const dx = e.clientX - prevX;
-            const dy = e.clientY - prevY;
-            prevX = e.clientX;
-            prevY = e.clientY;
-
-            camAzimuth -= dx * 0.008;
-            camElevation += dy * 0.008;
-            updateCameraPosition();
-        });
-
-        // Mouse Wheel Zoom
-        container.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            camRadius += e.deltaY * 0.03;
-            updateCameraPosition();
-        }, { passive: false });
-
-        // Touch Orbit (Mobile)
-        container.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true;
-                prevX = e.touches[0].clientX;
-                prevY = e.touches[0].clientY;
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchend', () => {
-            isDragging = false;
-        });
-
-        window.addEventListener('touchmove', (e) => {
-            if (!isDragging || e.touches.length !== 1) return;
-            const dx = e.touches[0].clientX - prevX;
-            const dy = e.touches[0].clientY - prevY;
-            prevX = e.touches[0].clientX;
-            prevY = e.touches[0].clientY;
-
-            camAzimuth -= dx * 0.008;
-            camElevation += dy * 0.008;
-            updateCameraPosition();
-        }, { passive: true });
-
-        // Handle Window Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        });
-
-        // ============================================================================
-        // 8. INITIALIZATION & RENDER LOOP
-        // ============================================================================
-        window.onload = function () {
-            onMagnetInputChange();
-            function animate() {
-                requestAnimationFrame(animate);
-                renderer.render(scene, camera);
-            }
-            animate();
-        };
-    </script>
+    <h2>Dipole Vector m (Die Frame)</h2>
+    <div class="vector-inputs">
+      <div>
+        <label>mx</label>
+        <input type="number" id="in-mx" value="0.17" step="0.05">
+      </div>
+      <div>
+        <label>my</label>
+        <input type="number" id="in-my" value="0.51" step="0.05">
+      </div>
+      <div>
+        <label>mz</label>
+        <input type="number" id="in-mz" value="0.84" step="0.05">
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Live Sensor Readout -->
+  <div class="panel" id="readouts">
+    <h2>Sensor Floor Metrics (z = -10.5 mm)</h2>
+    <div class="readout-item">
+      <span>World m_z (vertical):</span>
+      <span class="readout-val" id="disp-mz">0.00</span>
+    </div>
+    <div class="readout-item">
+      <span>Normalized Bz (2k·m_z):</span>
+      <span class="readout-val highlight" id="disp-bz">0.00</span>
+    </div>
+    <div class="readout-item">
+      <span>Normalized Bh (k·√(1-m_z²)):</span>
+      <span class="readout-val highlight" id="disp-bh">0.00</span>
+    </div>
+    <div class="readout-item">
+      <span>Raw Bx / By (Changes with yaw):</span>
+      <span class="readout-val" id="disp-bxy">0.00, 0.00</span>
+    </div>
+    <p style="font-size: 11px; color: #8b949e; margin: 8px 0 0 0; line-height: 1.4;">
+      Notice that while <b>Bx</b> and <b>By</b> shift continuously when changing yaw, <b>Bz</b> and <b>Bh</b> stay strictly constant!
+    </p>
+  </div>
+
+  <!-- Bottom Right: Table of all 6 faces -->
+  <div class="panel" id="table-panel">
+    <h3>All 6 Faces Signature Table</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: left;">Face</th>
+          <th>World mz</th>
+          <th>Bz / |B|</th>
+          <th>Bh / |B|</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="signature-table-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    // --- 1. Scene & Setup ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111418);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(38, 28, 42);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // Grid & Lighting
+    const grid = new THREE.GridHelper(60, 30, 0x30363d, 0x1c2128);
+    grid.position.y = -10.5;
+    scene.add(grid);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(20, 40, 20);
+    scene.add(dirLight);
+
+    // --- 2. Die Assembly ---
+    // World Yaw Group holds the entire die and allows spinning around world vertical axis
+    const yawGroup = new THREE.Group();
+    scene.add(yawGroup);
+
+    // Die Pivot Group rotates so specific faces point to +Z
+    const diePivot = new THREE.Group();
+    yawGroup.add(diePivot);
+
+    // Semi-transparent 16mm Outer Die Cube
+    const dieGeo = new THREE.BoxGeometry(16, 16, 16);
+    const dieMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.32,
+      roughness: 0.1,
+      metalness: 0.1,
+      depthWrite: false
+    });
+    const dieMesh = new THREE.Mesh(dieGeo, dieMat);
+    diePivot.add(dieMesh);
+
+    // Die Edges Outline
+    const edges = new THREE.EdgesGeometry(dieGeo);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x58a6ff, linewidth: 2 });
+    const dieOutline = new THREE.LineSegments(edges, lineMat);
+    diePivot.add(dieOutline);
+
+    // Helper: Face Canvas Textures for +X, -X, +Y, -Y, +Z, -Z labels
+    function makeTextSprite(text) {
+      const cvs = document.createElement('canvas');
+      cvs.width = 128; cvs.height = 128;
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#f0f6fc';
+      ctx.font = 'bold 50px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 64, 64);
+      const texture = new THREE.CanvasTexture(cvs);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(6, 6, 1);
+      return sprite;
+    }
+
+    const faceLabels = [
+      { t: '+Z', pos: [0, 8.5, 0] },
+      { t: '-Z', pos: [0, -8.5, 0] },
+      { t: '+X', pos: [8.5, 0, 0] },
+      { t: '-X', pos: [-8.5, 0, 0] },
+      { t: '+Y', pos: [0, 0, 8.5] },
+      { t: '-Y', pos: [0, 0, -8.5] }
+    ];
+    faceLabels.forEach(fl => {
+      const sp = makeTextSprite(fl.t);
+      sp.position.set(...fl.pos);
+      diePivot.add(sp);
+    });
+
+    // --- 3. Magnet Group (Rotates dynamically with vector m) ---
+    const magnetGroup = new THREE.Group();
+    diePivot.add(magnetGroup);
+
+    // 3 mm Neodymium Cube with colored poles (North = Red, South = Blue)
+    const cubeDim = 3;
+    const halfCube = cubeDim / 2;
+    const magBoxGeo = new THREE.BoxGeometry(cubeDim, cubeDim, cubeDim);
+    
+    // Multi-material cube: Face index 4 (+Y or chosen North) is Red, South is Blue
+    // Default cube orientation: +Y face is North (Red), -Y face is South (Blue)
+    const magnetMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.8, roughness: 0.2 }), // +X
+      new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.8, roughness: 0.2 }), // -X
+      new THREE.MeshStandardMaterial({ color: 0xff3b30, metalness: 0.5, roughness: 0.2 }), // +Y (North Face)
+      new THREE.MeshStandardMaterial({ color: 0x007aff, metalness: 0.5, roughness: 0.2 }), // -Y (South Face)
+      new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.8, roughness: 0.2 }), // +Z
+      new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.8, roughness: 0.2 })  // -Z
+    ];
+    const magnetCube = new THREE.Mesh(magBoxGeo, magnetMaterials);
+    magnetGroup.add(magnetCube);
+
+    // Dipole vector arrow pointing out of North pole
+    const arrowHelper = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0, 0),
+      9,
+      0xffcc00,
+      2.5,
+      1.5
+    );
+    magnetGroup.add(arrowHelper);
+
+    // --- 4. Magnetometer Sensor Base (2.5 mm Acrylic Air Gap below Die) ---
+    // Die bottom is at y = -8 mm. Sensor floor is 2.5 mm lower at y = -10.5 mm.
+    const sensorGeo = new THREE.BoxGeometry(4, 1, 4);
+    const sensorMat = new THREE.MeshStandardMaterial({ color: 0x238636, metalness: 0.3 });
+    const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
+    sensorMesh.position.set(0, -10.5, 0);
+    scene.add(sensorMesh);
+
+    // Sensor active center spot
+    const spotGeo = new THREE.CylinderGeometry(0.8, 0.8, 1.1, 16);
+    const spotMat = new THREE.MeshBasicMaterial({ color: 0x7ee787 });
+    const spot = new THREE.Mesh(spotGeo, spotMat);
+    spot.position.set(0, -10.5, 0);
+    scene.add(spot);
+
+    // --- 5. Math & State Variables ---
+    let currentFace = '+Z';
+    let targetQuat = new THREE.Quaternion();
+    let m_die = new THREE.Vector3(0.17, 0.51, 0.84).normalize();
+
+    // Orient the internal magnet cube and arrow to match vector m
+    function updateMagnetCubeOrientation() {
+      // The North pole of our cube points along local (0, 1, 0)
+      const defaultNorth = new THREE.Vector3(0, 1, 0);
+      const q = new THREE.Quaternion().setFromUnitVectors(defaultNorth, m_die);
+      magnetGroup.quaternion.copy(q);
+    }
+    updateMagnetCubeOrientation();
+
+    // Face rotations to bring target face pointing UP (+Y in Three.js world / +Z in Knucklebones frame)
+    const faceOrientations = {
+      '+Z': new THREE.Euler(0, 0, 0),
+      '-Z': new THREE.Euler(Math.PI, 0, 0),
+      '+Y': new THREE.Euler(-Math.PI / 2, 0, 0),
+      '-Y': new THREE.Euler(Math.PI / 2, 0, 0),
+      '+X': new THREE.Euler(0, 0, Math.PI / 2),
+      '-X': new THREE.Euler(0, 0, -Math.PI / 2)
+    };
+
+    function setFace(faceKey) {
+      currentFace = faceKey;
+      document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-' + faceKey);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const e = faceOrientations[faceKey];
+      targetQuat.setFromEuler(e);
+      updateReadouts();
+    }
+
+    // --- 6. Physics Dipole Calculations ---
+    function updateReadouts() {
+      // Vector m in World Coordinates
+      const m_world = m_die.clone();
+      m_world.applyQuaternion(diePivot.quaternion);
+      m_world.applyQuaternion(yawGroup.quaternion);
+
+      // Vertical component mz (Three.js vertical is Y)
+      const mz = m_world.y;
+      const mx = m_world.x;
+      const my = m_world.z;
+
+      // Dipole equation at sensor floor:
+      // Bz = 2k * mz,  Bh = k * sqrt(1 - mz^2)
+      const k = 1.0;
+      const bz = 2.0 * k * mz;
+      const bh = k * Math.sqrt(Math.max(0, 1.0 - mz * mz));
+      const b_total = Math.sqrt(bz * bz + bh * bh);
+
+      // Normalized outputs
+      const bz_norm = bz / b_total;
+      const bh_norm = bh / b_total;
+
+      document.getElementById('disp-mz').innerText = mz.toFixed(3);
+      document.getElementById('disp-bz').innerText = bz_norm.toFixed(3);
+      document.getElementById('disp-bh').innerText = bh_norm.toFixed(3);
+      document.getElementById('disp-bxy').innerText = `${mx.toFixed(2)}, ${my.toFixed(2)}`;
+
+      renderSignatureTable(mz);
+    }
+
+    function renderSignatureTable(currentMz) {
+      const tbody = document.getElementById('signature-table-body');
+      tbody.innerHTML = '';
+
+      Object.keys(faceOrientations).forEach(fk => {
+        const testQ = new THREE.Quaternion().setFromEuler(faceOrientations[fk]);
+        const testM = m_die.clone().applyQuaternion(testQ);
+        const testMz = testM.y;
+
+        const bz = 2.0 * testMz;
+        const bh = Math.sqrt(Math.max(0, 1.0 - testMz * testMz));
+        const bt = Math.sqrt(bz * bz + bh * bh);
+
+        const row = document.createElement('tr');
+        if (fk === currentFace) row.className = 'active-row';
+
+        row.innerHTML = `
+          <td style="text-align: left; font-weight: bold;">${fk}</td>
+          <td>${testMz.toFixed(3)}</td>
+          <td>${(bz / bt).toFixed(3)}</td>
+          <td>${(bh / bt).toFixed(3)}</td>
+          <td style="color: #7ee787;">Distinct</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // --- 7. Event Listeners ---
+    document.getElementById('yaw-slider').addEventListener('input', (e) => {
+      const deg = parseFloat(e.target.value);
+      yawGroup.rotation.y = THREE.MathUtils.degToRad(deg);
+      document.getElementById('yaw-val').innerText = `${deg}°`;
+      updateReadouts();
+    });
+
+    function handleVectorChange() {
+      const vx = parseFloat(document.getElementById('in-mx').value) || 0.01;
+      const vy = parseFloat(document.getElementById('in-my').value) || 0.01;
+      const vz = parseFloat(document.getElementById('in-mz').value) || 0.01;
+
+      m_die = new THREE.Vector3(vx, vy, vz).normalize();
+      updateMagnetCubeOrientation();
+      updateReadouts();
+    }
+
+    document.getElementById('in-mx').addEventListener('input', handleVectorChange);
+    document.getElementById('in-my').addEventListener('input', handleVectorChange);
+    document.getElementById('in-mz').addEventListener('input', handleVectorChange);
+
+    // Simple Camera Mouse Orbit
+    let isDragging = false;
+    let prevMouse = { x: 0, y: 0 };
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'CANVAS') return;
+      isDragging = true;
+      prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - prevMouse.x;
+      const dy = e.clientY - prevMouse.y;
+      prevMouse = { x: e.clientX, y: e.clientY };
+
+      const radius = camera.position.length();
+      let theta = Math.atan2(camera.position.x, camera.position.z);
+      let phi = Math.acos(Math.max(-1, Math.min(1, camera.position.y / radius)));
+
+      theta -= dx * 0.008;
+      phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.02, phi - dy * 0.008));
+
+      camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+      camera.position.y = radius * Math.cos(phi);
+      camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+      camera.lookAt(0, -2, 0);
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- 8. Animation Loop ---
+    camera.lookAt(0, -2, 0);
+    setFace('+Z');
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Smooth slerp rotation towards selected face
+      if (diePivot.quaternion.angleTo(targetQuat) > 0.001) {
+        diePivot.quaternion.slerp(targetQuat, 0.12);
+        updateReadouts();
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
 </body>
 </html>
