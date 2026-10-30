@@ -1,7 +1,7 @@
 #include "DiceReader.hh"
 
 DiceReader::DiceReader(Adafruit_HMC5883_Unified& magnetometer, uint8_t slotId, float m_tolerance)
-    : mag(magnetometer), tolerance(m_tolerance) {
+    : mag(magnetometer), id(slotId), tolerance(m_tolerance) {
         snprintf(nvsKey, sizeof(nvsKey), "slot_%u", id);
     }
 
@@ -13,7 +13,7 @@ bool DiceReader::begin() {
 bool DiceReader::load() {
     if (!isValidId()) return false;
     prefs.begin(NVS_NAMESPACE, true);
-    size_t storedLength = prefs.getBytesLength("calibdata");
+    size_t storedLength = prefs.getBytesLength(nvsKey);
     if (storedLength == sizeof(faces)) {
         prefs.getBytes(nvsKey, faces, sizeof(faces));
         prefs.end();
