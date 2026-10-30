@@ -23,6 +23,25 @@ bool DiceReader::load() {
     return false;
 }
 
+int DiceReader::read(float currentX, float currentY, float currentZ) const {
+    int bestFace = 0;
+    float bestDistance = tolerance * tolerance;
+
+    for (uint8_t i = 0; i < NUM_FACES; i++) {
+        float dx = currentX - faces[i].x;
+        float dy = currentY - faces[i].y;
+        float dz = currentZ - faces[i].z;
+
+        float distSqr = (dx * dx) + (dy * dy) + (dz * dz);
+
+        if (distSqr < (bestDistance)) {
+            bestDistance = distSqr;
+            bestFace = i + 1;
+        }
+    }
+    return bestFace;
+}
+
 bool DiceReader::recordFace(uint8_t faceNumber, float x, float y, float z) {
     if (faceNumber < 1 || faceNumber > 6) return false;
     faces[faceNumber-1] = {x, y, z};
