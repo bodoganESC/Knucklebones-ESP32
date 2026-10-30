@@ -1,7 +1,7 @@
 #include "DiceReader.hh"
 
-DiceReader::DiceReader(Adafruit_HMC5883_Unified& magnetometer, float tolerance)
-    : mag(magnetometer), tolerance(tolerance) {
+DiceReader::DiceReader(Adafruit_HMC5883_Unified& magnetometer, uint8_t slotId, float m_tolerance)
+    : mag(magnetometer), tolerance(m_tolerance) {
 
     }
 
@@ -21,11 +21,11 @@ bool DiceReader::load() {
     return false;
 }
 
-bool DiceReader::recordFace(int faceIndex, float x, float y, float z) {
-    if (faceIndex < 1 || faceIndex > 6) {
+bool DiceReader::recordFace(uint8_t faceNumber, float x, float y, float z) {
+    if (faceNumber < 1 || faceNumber > 6) {
         return false; // Invalid face index
     }
-    faces[faceIndex - 1] = {x, y, z};
+    faces[faceNumber - 1] = {x, y, z};
     prefs.begin("dice_reader", false);
     prefs.putBytes("calibdata", faces, sizeof(faces));
     prefs.end();
@@ -34,13 +34,15 @@ bool DiceReader::recordFace(int faceIndex, float x, float y, float z) {
 
 bool DiceReader::recordAllFaces(const FaceSignature newFaces[6]) {
     memcpy(faces, newFaces, sizeof(faces));
+    return saveToNVS();
+}
 
+bool DiceReader::saveToNVS() {
     if (!prefs.begin("dice_reader", false)) {
         return false; // Failed to start preferences
     }
-
     size_t written = prefs.putBytes("calibdata", faces, sizeof(faces));
     prefs.end();
 
-    return (written == sizeof(faces));
+    return (written == sizeof(faces));    
 }
