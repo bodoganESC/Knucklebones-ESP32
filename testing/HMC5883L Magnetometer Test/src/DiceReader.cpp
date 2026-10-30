@@ -2,18 +2,20 @@
 
 DiceReader::DiceReader(Adafruit_HMC5883_Unified& magnetometer, uint8_t slotId, float m_tolerance)
     : mag(magnetometer), tolerance(m_tolerance) {
-
+        snprintf(nvsKey, sizeof(nvsKey), "slot_%u", id);
     }
 
 bool DiceReader::begin() {
+    if (!isValidId()) return false;
     return load();
 }
 
 bool DiceReader::load() {
-    prefs.begin("dice_reader", true);
+    if (!isValidId()) return false;
+    prefs.begin(NVS_NAMESPACE, true);
     size_t storedLength = prefs.getBytesLength("calibdata");
     if (storedLength == sizeof(faces)) {
-        prefs.getBytes("calibdata", faces, sizeof(faces));
+        prefs.getBytes(nvsKey, faces, sizeof(faces));
         prefs.end();
         return true;
     }
@@ -22,14 +24,9 @@ bool DiceReader::load() {
 }
 
 bool DiceReader::recordFace(uint8_t faceNumber, float x, float y, float z) {
-    if (faceNumber < 1 || faceNumber > 6) {
-        return false; // Invalid face index
-    }
-    faces[faceNumber - 1] = {x, y, z};
-    prefs.begin("dice_reader", false);
-    prefs.putBytes("calibdata", faces, sizeof(faces));
-    prefs.end();
-    return true;
+    if (faceNumber < 1 || faceNumber > 6) return false;
+    faces[faceNumber-1] = {x, y, z};
+    return saveToNVS();
 }
 
 bool DiceReader::recordAllFaces(const FaceSignature newFaces[6]) {
@@ -37,11 +34,28 @@ bool DiceReader::recordAllFaces(const FaceSignature newFaces[6]) {
     return saveToNVS();
 }
 
-bool DiceReader::saveToNVS() {
-    if (!prefs.begin("dice_reader", false)) {
+bool DiceReader::eraseMemory() {
+    if (!isValidId() || !prefs.begin(NVS_NAMESPACE, false)) {
+        return false;
+    }
+    bool removed = prefs.remove(nvsKey);
+    prefs.end();
+    return removed;
+}
+
+bool DiceReader::isValidId() const {
+    return (id >= 1 && id <= MAX_SLOTS);
+}
+
+bool DiceReader::saveToNVS()
+{
+    if (!isValidId()) {
+        return false;
+    }
+    if (!prefs.begin(NVS_NAMESPACE, false)) {
         return false; // Failed to start preferences
     }
-    size_t written = prefs.putBytes("calibdata", faces, sizeof(faces));
+    size_t written = prefs.putBytes(nvsKey, faces, sizeof(faces));
     prefs.end();
 
     return (written == sizeof(faces));    

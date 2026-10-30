@@ -35,7 +35,8 @@ public:
     // Saves all six face signatures at once. Returns false if any of the face signatures are invalid.
     bool recordAllFaces(const FaceSignature newFaces[6]);
 
-    void eraseMemory();
+    // Erases a slot's key from NVS
+    bool eraseMemory();
 
     uint8_t getSlotId() const { return id; }
 
